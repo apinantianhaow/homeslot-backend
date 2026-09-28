@@ -1,0 +1,8 @@
+### Whether an edit or cancellation applies to one occurrence or the whole
+### recurring series.
+enum: EditScope
+serialized: byName
+default: single
+values:
+  - single
+  - series

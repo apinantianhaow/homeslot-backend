@@ -1,0 +1,14 @@
+### Lifecycle status of a booking (SRS 2.4, 6 states).
+###
+### Only [pending] and [confirmed] hold the time slot; the exclusion
+### constraint `bookings_no_overlap` enforces this in the database.
+enum: BookingStatus
+serialized: byName
+default: pending
+values:
+  - pending
+  - confirmed
+  - rejected
+  - expired
+  - cancelled
+  - completed

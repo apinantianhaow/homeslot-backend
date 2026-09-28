@@ -1,0 +1,36 @@
+### A booking of one room by one user. Core table of the system.
+###
+### Overlaps are prevented in the database by the `bookings_no_overlap`
+### exclusion constraint (see `lib/src/db/constraints.dart`).
+class: Booking
+table: bookings
+fields:
+  householdId: int, relation(parent=households, onDelete=Cascade)
+  roomId: int, relation(parent=rooms, onDelete=Cascade)
+  userId: int, relation(parent=users, onDelete=Cascade)
+  seriesId: int?, relation(parent=booking_series, onDelete=SetNull)
+  startAt: DateTime
+  ### Changed to the release time when the room is released early.
+  endAt: DateTime
+  status: BookingStatus
+  purpose: String?
+  note: String?
+  ### Owner who approved or rejected the request.
+  decidedById: int?
+  rejectReason: String?
+  ### Who cancelled the booking, when it was not the booker.
+  cancelledById: int?
+  cancelReason: String?
+  releasedAt: DateTime?
+  reminderSentAt: DateTime?
+  createdAt: DateTime, default=now
+  updatedAt: DateTime, default=now
+indexes:
+  bookings_room_start_idx:
+    fields: roomId, startAt
+  bookings_user_start_idx:
+    fields: userId, startAt
+  bookings_household_start_idx:
+    fields: householdId, startAt
+  bookings_status_idx:
+    fields: status

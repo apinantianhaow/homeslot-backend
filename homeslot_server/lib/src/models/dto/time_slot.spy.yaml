@@ -1,0 +1,5 @@
+### A free time range suggested to the user.
+class: TimeSlot
+fields:
+  startAt: DateTime
+  endAt: DateTime

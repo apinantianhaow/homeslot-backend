@@ -1,0 +1,8 @@
+### Input for creating a single booking.
+class: BookingRequest
+fields:
+  roomId: int
+  startAt: DateTime
+  endAt: DateTime
+  purpose: String?
+  note: String?

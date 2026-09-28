@@ -1,0 +1,10 @@
+### Real-time event types pushed to connected clients.
+enum: HouseholdEventType
+serialized: byName
+default: bookingsChanged
+values:
+  - bookingsChanged
+  - roomsChanged
+  - membersChanged
+  - householdChanged
+  - notification

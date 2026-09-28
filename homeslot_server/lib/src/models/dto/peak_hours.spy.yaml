@@ -1,0 +1,10 @@
+### When rooms are used the most (SRS 2.6.3).
+class: PeakHours
+fields:
+  roomId: int?
+  from: DateTime
+  to: DateTime
+  ### 24 values: booked minutes per local hour of day.
+  hourly: List<int>
+  ### 7 x 24 values (Monday first): booked minutes per weekday and hour.
+  heatmap: List<int>

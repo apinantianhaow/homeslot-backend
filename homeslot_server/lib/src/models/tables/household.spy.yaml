@@ -1,0 +1,8 @@
+### A household: the group of people sharing the same set of rooms.
+class: Household
+table: households
+fields:
+  name: String
+  ### IANA time zone used to display and validate all times.
+  timezone: String, default='Asia/Bangkok'
+  createdAt: DateTime, default=now

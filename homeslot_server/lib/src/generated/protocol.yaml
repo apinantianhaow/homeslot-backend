@@ -1,0 +1,68 @@
+emailIdp:
+  - login:
+  - startRegistration:
+  - verifyRegistrationCode:
+  - finishRegistration:
+  - startPasswordReset:
+  - verifyPasswordResetCode:
+  - finishPasswordReset:
+  - hasAccount:
+googleIdp:
+  - login:
+  - loginWithCode:
+  - hasAccount:
+jwtRefresh:
+  - refreshAccessToken:
+account:
+  - me:
+  - updateProfile:
+  - updateSettings:
+  - registerDevice:
+  - unregisterDevice:
+  - deleteAccount:
+booking:
+  - list:
+  - create:
+  - suggest:
+  - previewSeries:
+  - createSeries:
+  - update:
+  - cancel:
+  - release:
+  - mine:
+  - pending:
+  - approve:
+  - reject:
+events:
+  - subscribe:
+household:
+  - create:
+  - update:
+  - members:
+  - createInvite:
+  - activeInvites:
+  - revokeInvite:
+  - join:
+  - changeRole:
+  - removeMember:
+  - leave:
+notification:
+  - list:
+  - unreadCount:
+  - markRead:
+  - markAllRead:
+room:
+  - list:
+  - get:
+  - statusNow:
+  - create:
+  - update:
+  - delete:
+  - close:
+  - removeClosure:
+stats:
+  - usage:
+  - peakHours:
+upload:
+  - createUpload:
+  - verifyUpload:

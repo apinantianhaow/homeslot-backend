@@ -1,0 +1,101 @@
+# HomeSlot production stack (SRS 3.2, 4.4, 4.5).
+#
+# Runs the same way on a Raspberry Pi (arm64, 4 GB RAM or more) at home or on
+# a cloud VPS:
+#
+#   cp .env.example .env        # fill in the secrets
+#   docker compose up -d --build
+#
+# To reach the server from outside the home without opening router ports,
+# enable the Cloudflare Tunnel profile:
+#
+#   docker compose --profile tunnel up -d
+
+name: homeslot
+
+services:
+  postgres:
+    # The official image ships the btree_gist extension used by the
+    # booking overlap constraint.
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: homeslot
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d homeslot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  server:
+    build:
+      context: ..
+      dockerfile: homeslot_server/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      runmode: production
+      SERVERPOD_API_SERVER_PUBLIC_HOST: ${PUBLIC_HOST:-localhost}
+      SERVERPOD_PASSWORD_database: ${DB_PASSWORD}
+      SERVERPOD_PASSWORD_serviceSecret: ${SERVICE_SECRET:?Set SERVICE_SECRET}
+      SERVERPOD_PASSWORD_emailSecretHashPepper: ${EMAIL_PEPPER:?Set EMAIL_PEPPER}
+      SERVERPOD_PASSWORD_jwtHmacSha512PrivateKey: ${JWT_PRIVATE_KEY:?Set JWT_PRIVATE_KEY}
+      SERVERPOD_PASSWORD_jwtRefreshTokenHashPepper: ${JWT_REFRESH_PEPPER:?Set JWT_REFRESH_PEPPER}
+      SERVERPOD_PASSWORD_smtpHost: ${SMTP_HOST:-}
+      SERVERPOD_PASSWORD_smtpPort: ${SMTP_PORT:-587}
+      SERVERPOD_PASSWORD_smtpUsername: ${SMTP_USERNAME:-}
+      SERVERPOD_PASSWORD_smtpPassword: ${SMTP_PASSWORD:-}
+      SERVERPOD_PASSWORD_smtpFrom: ${SMTP_FROM:-}
+    # Apply pending migrations on start, then serve.
+    entrypoint:
+      - sh
+      - -c
+      - ./bin/server --mode=production --role=monolith --apply-migrations
+    volumes:
+      # Optional: put firebase_service_account_key.json here to enable push
+      # notifications.
+      - ./secrets:/app/secrets:ro
+    ports:
+      - "8080:8080"
+
+  # Daily database backup, keeping the last 7 days (SRS 4.4).
+  backup:
+    image: postgres:16
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${DB_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          file=/backups/homeslot-$$(date +%Y%m%d-%H%M%S).sql.gz
+          pg_dump -h postgres -U postgres homeslot | gzip > "$$file" && echo "Backup $$file"
+          find /backups -name 'homeslot-*.sql.gz' -mtime +7 -delete
+          sleep 86400
+        done
+
+  # Optional: expose the server through Cloudflare Tunnel instead of opening
+  # router ports (SRS 3.2). Create a tunnel that points to http://server:8080.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    profiles: [tunnel]
+    depends_on: [server]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+
+volumes:
+  pgdata:

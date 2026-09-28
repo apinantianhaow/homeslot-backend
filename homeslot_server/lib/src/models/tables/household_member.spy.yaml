@@ -1,0 +1,15 @@
+### Membership of a user in a household.
+class: HouseholdMember
+table: household_members
+fields:
+  householdId: int, relation(parent=households, onDelete=Cascade)
+  userId: int, relation(parent=users, onDelete=Cascade)
+  role: MemberRole
+  joinedAt: DateTime, default=now
+indexes:
+  ### Version 1 scope: a user belongs to at most one household.
+  household_members_user_idx:
+    fields: userId
+    unique: true
+  household_members_household_idx:
+    fields: householdId

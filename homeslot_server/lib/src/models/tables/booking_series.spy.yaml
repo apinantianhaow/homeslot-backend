@@ -1,0 +1,17 @@
+### A weekly recurring booking (up to 12 weeks).
+class: BookingSeries
+table: booking_series
+fields:
+  roomId: int, relation(parent=rooms, onDelete=Cascade)
+  userId: int, relation(parent=users, onDelete=Cascade)
+  ### 1 = Monday ... 7 = Sunday, in the household time zone.
+  weekday: int
+  ### Local start, minutes after midnight.
+  startMinute: int
+  ### Local end, minutes after midnight of the start day (may exceed 1440).
+  endMinute: int
+  weeks: int
+  ### Start of the last occurrence.
+  untilDate: DateTime
+  purpose: String?
+  createdAt: DateTime, default=now

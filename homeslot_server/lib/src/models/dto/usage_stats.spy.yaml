@@ -1,0 +1,10 @@
+### Usage statistics for a week or month (SRS 2.6.2).
+class: UsageStats
+fields:
+  period: StatsPeriod
+  from: DateTime
+  to: DateTime
+  totalMinutes: int
+  byRoom: List<UsageEntry>
+  byMember: List<UsageEntry>
+  byDay: List<DailyUsage>

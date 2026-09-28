@@ -1,0 +1,15 @@
+### Firebase Cloud Messaging token of one device.
+class: DeviceToken
+table: device_tokens
+serverOnly: true
+fields:
+  userId: int, relation(parent=users, onDelete=Cascade)
+  token: String
+  platform: String
+  updatedAt: DateTime, default=now
+indexes:
+  device_tokens_token_idx:
+    fields: token
+    unique: true
+  device_tokens_user_idx:
+    fields: userId

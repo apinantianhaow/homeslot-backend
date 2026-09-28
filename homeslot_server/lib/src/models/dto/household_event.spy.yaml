@@ -1,0 +1,7 @@
+### Real-time event streamed to clients so calendars refresh without reload.
+class: HouseholdEvent
+fields:
+  type: HouseholdEventType
+  roomId: int?
+  bookingId: int?
+  at: DateTime

@@ -1,0 +1,5 @@
+### Upload description for the client FileUploader plus the storage path.
+class: UploadTicket
+fields:
+  path: String
+  description: String

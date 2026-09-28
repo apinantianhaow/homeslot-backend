@@ -1,0 +1,10 @@
+### A household member as shown in the member list.
+class: MemberInfo
+fields:
+  userId: int
+  displayName: String
+  color: String
+  avatarUrl: String?
+  email: String?
+  role: MemberRole
+  joinedAt: DateTime

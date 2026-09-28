@@ -1,0 +1,15 @@
+### Opening hours of a room for one weekday. A weekday without a row is closed.
+class: RoomHours
+table: room_hours
+fields:
+  roomId: int?, relation(parent=rooms, onDelete=Cascade)
+  ### 1 = Monday ... 7 = Sunday (same as `DateTime.weekday`).
+  weekday: int
+  ### Minutes after local midnight, 0-1439.
+  openMinute: int
+  ### Minutes after local midnight, 1-1440 (1440 = end of day).
+  closeMinute: int
+indexes:
+  room_hours_room_weekday_idx:
+    fields: roomId, weekday
+    unique: true

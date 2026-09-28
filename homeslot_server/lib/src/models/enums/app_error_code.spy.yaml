@@ -1,0 +1,15 @@
+### Machine readable reason for a general application error.
+enum: AppErrorCode
+serialized: byName
+default: validation
+values:
+  - notMember
+  - notOwner
+  - notFound
+  - alreadyMember
+  - invalidInvite
+  - inviteLocked
+  - lastOwner
+  - limitReached
+  - roomHasFutureBookings
+  - validation

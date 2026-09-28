@@ -1,0 +1,15 @@
+### In-app notification history (kept for 30 days).
+class: AppNotification
+table: notifications
+fields:
+  userId: int, relation(parent=users, onDelete=Cascade)
+  householdId: int?
+  type: NotificationType
+  title: String
+  body: String
+  bookingId: int?
+  readAt: DateTime?
+  createdAt: DateTime, default=now
+indexes:
+  notifications_user_created_idx:
+    fields: userId, createdAt

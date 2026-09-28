@@ -1,0 +1,27 @@
+### A bookable room together with its booking rules (SRS 2.3 rule table).
+class: Room
+table: rooms
+fields:
+  householdId: int, relation(parent=households, onDelete=Cascade)
+  name: String
+  type: RoomType
+  imageUrl: String?
+  capacity: int, default=1
+  description: String?
+  ### Bookings by members must be approved by an owner first.
+  requiresApproval: bool, default=false
+  ### Start and end times must align to this many minutes.
+  slotMinutes: int, default=15
+  ### Minimum length of one booking.
+  minMinutes: int, default=30
+  ### Maximum length of one booking.
+  maxMinutes: int, default=240
+  ### How many days ahead a booking may start.
+  advanceDays: int, default=30
+  ### Weekly minutes a member may book in this room. Null means unlimited.
+  weeklyQuotaMinutes: int?
+  sortOrder: int, default=0
+  createdAt: DateTime, default=now
+indexes:
+  rooms_household_idx:
+    fields: householdId

@@ -1,0 +1,19 @@
+### Machine readable reason for a rejected booking (SRS 2.3.4).
+enum: BookingErrorCode
+serialized: byName
+default: invalidRange
+values:
+  - overlap
+  - outsideHours
+  - roomClosed
+  - tooShort
+  - tooLong
+  - notAligned
+  - inPast
+  - tooFarAhead
+  - quotaExceeded
+  - invalidRange
+  - notAllowed
+  - notFound
+  - invalidState
+  - seriesConflict

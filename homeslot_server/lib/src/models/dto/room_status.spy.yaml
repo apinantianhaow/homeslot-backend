@@ -1,0 +1,8 @@
+### Current state of a room for the home screen (SRS 2.3.9).
+class: RoomStatus
+fields:
+  room: Room
+  current: BookingView?
+  next: BookingView?
+  closure: RoomClosure?
+  openNow: bool

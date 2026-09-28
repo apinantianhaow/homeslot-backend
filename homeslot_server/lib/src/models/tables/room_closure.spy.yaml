@@ -1,0 +1,13 @@
+### A temporary closure of a room, e.g. while the air conditioner is repaired.
+class: RoomClosure
+table: room_closures
+fields:
+  roomId: int, relation(parent=rooms, onDelete=Cascade)
+  startAt: DateTime
+  endAt: DateTime
+  reason: String
+  createdById: int
+  createdAt: DateTime, default=now
+indexes:
+  room_closures_room_idx:
+    fields: roomId, startAt

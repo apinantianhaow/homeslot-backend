@@ -1,0 +1,7 @@
+### Thrown when a booking breaks a rule. Carries alternatives when available.
+exception: BookingException
+fields:
+  code: BookingErrorCode
+  message: String
+  suggestions: List<TimeSlot>?
+  conflicts: List<SeriesOccurrence>?

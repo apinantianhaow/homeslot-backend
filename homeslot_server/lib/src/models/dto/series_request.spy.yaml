@@ -1,0 +1,11 @@
+### Input for a weekly recurring booking. [startAt]/[endAt] is the first
+### occurrence; [skipStarts] lists occurrence starts the user chose to skip.
+class: SeriesRequest
+fields:
+  roomId: int
+  startAt: DateTime
+  endAt: DateTime
+  weeks: int
+  purpose: String?
+  note: String?
+  skipStarts: List<DateTime>

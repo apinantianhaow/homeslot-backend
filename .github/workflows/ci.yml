@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+    env:
+      SERVERPOD_VERSION: '4.0.3'
+      # Test-only secrets for the throwaway embedded PostgreSQL started by the
+      # tests. `config/passwords.yaml` is not committed.
+      SERVERPOD_PASSWORD_database: ci-test-database-password
+      SERVERPOD_PASSWORD_jwtHmacSha512PrivateKey: ci-test-jwt-private-key-0123456789
+      SERVERPOD_PASSWORD_jwtRefreshTokenHashPepper: ci-test-refresh-pepper-0123456789
+      SERVERPOD_PASSWORD_emailSecretHashPepper: ci-test-email-pepper-0123456789
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.12.2'
+
+      # Tests run against an embedded PostgreSQL that Serverpod starts itself
+      # (config/test.yaml sets database.dataPath). Cache its binaries.
+      - name: Cache embedded PostgreSQL binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/serverpod/pg-binaries
+          key: serverpod-pg-binaries-${{ runner.os }}-${{ env.SERVERPOD_VERSION }}
+
+      - name: Install dependencies
+        run: dart pub get
+
+      - name: Install Serverpod CLI
+        run: dart pub global activate serverpod_cli $SERVERPOD_VERSION
+
+      - name: Generated code is up to date
+        working-directory: homeslot_server
+        run: |
+          serverpod generate
+          git diff --exit-code -- lib/src/generated ../homeslot_client
+
+      - name: Analyze
+        run: dart analyze --fatal-infos homeslot_server e2e
+
+      - name: Check formatting
+        working-directory: homeslot_server
+        run: dart format --output=none --set-exit-if-changed lib test tool bin
+
+      - name: Unit and integration tests
+        working-directory: homeslot_server
+        run: dart test
+
+      # Boots the real development server (embedded PostgreSQL) and drives it
+      # over HTTP + WebSocket with the generated client (SRS 4.2 timings,
+      # real-time updates, concurrent booking requests).
+      - name: End-to-end smoke test
+        run: |
+          cd homeslot_server
+          dart run bin/main.dart --apply-migrations > ../server.log 2>&1 &
+          for i in $(seq 1 120); do
+            curl -sf -o /dev/null http://localhost:8080/ && break
+            sleep 1
+          done
+          cd ../e2e
+          dart run bin/e2e.dart ../server.log

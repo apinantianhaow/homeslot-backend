@@ -1,0 +1,7 @@
+### A booking with the display data needed by the calendar.
+class: BookingView
+fields:
+  booking: Booking
+  roomName: String
+  userName: String
+  userColor: String

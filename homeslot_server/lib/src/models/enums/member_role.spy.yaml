@@ -1,0 +1,9 @@
+### Role of a member inside a household.
+enum: MemberRole
+serialized: byName
+default: member
+values:
+  ### Household owner: manages rooms, rules, members and approvals.
+  - owner
+  ### Regular member: views the schedule and manages own bookings.
+  - member

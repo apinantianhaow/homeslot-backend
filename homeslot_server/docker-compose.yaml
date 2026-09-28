@@ -1,0 +1,30 @@
+services:
+  # Development services
+  postgres:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "8090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: homeslot
+      POSTGRES_PASSWORD: "R9BT7AGE2fAynyc_ymldnohCuJVbz9AJ"
+    volumes:
+      - homeslot_data:/var/lib/postgresql/data
+
+
+  # Test services
+  postgres_test:
+    image: ghcr.io/serverpod/postgres:16
+    ports:
+      - "9090:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: homeslot_test
+      POSTGRES_PASSWORD: "7sBxXEpqxic6Cid_ADV7DI2nz4T28oUu"
+    volumes:
+      - homeslot_test_data:/var/lib/postgresql/data
+
+
+volumes:
+  homeslot_data:
+  homeslot_test_data:

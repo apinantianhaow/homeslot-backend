@@ -1,0 +1,7 @@
+### Period used by usage statistics.
+enum: StatsPeriod
+serialized: byName
+default: week
+values:
+  - week
+  - month

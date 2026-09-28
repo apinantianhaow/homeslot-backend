@@ -1,0 +1,29 @@
+### Application-level user profile (table `users` in the SRS ER diagram).
+###
+### Linked 1:1 to the Serverpod auth user. When a user deletes their account
+### (PDPA), personal data is erased and [deletedAt] is set, but the row is kept
+### so booking history can still show "former member".
+class: AppUser
+table: users
+fields:
+  ### The Serverpod auth user this profile belongs to. Null once deleted.
+  authUserId: UuidValue?
+  email: String?
+  displayName: String
+  ### Personal calendar color as `#RRGGBB`.
+  color: String
+  avatarUrl: String?
+  ### Minutes before a booking starts to send the reminder (5-60).
+  reminderMinutes: int, default=15
+  reminderEnabled: bool, default=true
+  ### Preferred language for push notification text (`th` or `en`).
+  locale: String, default='th'
+  deletedAt: DateTime?
+  createdAt: DateTime, default=now
+indexes:
+  users_auth_user_id_idx:
+    fields: authUserId
+    unique: true
+  users_email_idx:
+    fields: email
+    unique: true

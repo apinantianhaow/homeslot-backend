@@ -1,0 +1,36 @@
+# Production configuration for the Docker Compose deployment in `deploy/`.
+#
+# The server runs next to PostgreSQL on the same Docker network, so the
+# database host is the service name `postgres`. Set `publicHost` to the domain
+# that reaches the server (for example through Cloudflare Tunnel, SRS 3.2).
+#
+# Every value can also be overridden with environment variables, e.g.
+# SERVERPOD_API_SERVER_PUBLIC_HOST=api.example.com. Secrets come from
+# SERVERPOD_PASSWORD_<name> environment variables (see deploy/.env.example).
+
+apiServer:
+  port: 8080
+  publicHost: homeslot.example.com
+  publicPort: 443
+  publicScheme: https
+
+insightsServer:
+  port: 8081
+  publicHost: homeslot.example.com
+  publicPort: 8081
+  publicScheme: https
+
+database:
+  host: postgres
+  port: 5432
+  name: homeslot
+  user: postgres
+  requireSsl: false
+  maxConnectionCount: 10
+
+maxRequestSize: 2097152 # 2 MB, enough for compressed room photos and avatars
+
+sessionLogs:
+  consoleEnabled: true
+  consoleLogFormat: json
+  persistentEnabled: true

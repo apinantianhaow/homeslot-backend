@@ -1,0 +1,6 @@
+### A room with its opening hours and upcoming closures.
+class: RoomDetail
+fields:
+  room: Room
+  hours: List<RoomHours>
+  closures: List<RoomClosure>

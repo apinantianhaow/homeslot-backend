@@ -1,0 +1,5 @@
+### Booked minutes on one local day.
+class: DailyUsage
+fields:
+  date: DateTime
+  minutes: int

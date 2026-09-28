@@ -1,0 +1,8 @@
+### One occurrence of a recurring booking and whether it can be booked.
+class: SeriesOccurrence
+fields:
+  startAt: DateTime
+  endAt: DateTime
+  ok: bool
+  code: BookingErrorCode?
+  message: String?

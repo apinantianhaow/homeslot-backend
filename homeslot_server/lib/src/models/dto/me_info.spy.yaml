@@ -1,0 +1,6 @@
+### The signed-in user with their household and role, if any.
+class: MeInfo
+fields:
+  user: AppUser
+  household: Household?
+  role: MemberRole?

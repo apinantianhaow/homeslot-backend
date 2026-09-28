@@ -1,0 +1,15 @@
+### Kind of notification sent to a user.
+enum: NotificationType
+serialized: byName
+default: general
+values:
+  - bookingReminder
+  - approvalRequested
+  - bookingApproved
+  - bookingRejected
+  - bookingExpired
+  - bookingCancelledByOther
+  - roomClosed
+  - memberRemoved
+  - roleChanged
+  - general

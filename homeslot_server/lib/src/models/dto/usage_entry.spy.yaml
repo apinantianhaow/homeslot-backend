@@ -1,0 +1,8 @@
+### Booked minutes for one room or member.
+class: UsageEntry
+fields:
+  id: int
+  label: String
+  color: String?
+  minutes: int
+  bookings: int

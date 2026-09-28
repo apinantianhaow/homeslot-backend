@@ -1,0 +1,11 @@
+### Invite code attempts, used to block brute forcing (5 failures / 15 min).
+class: InviteAttempt
+table: invite_attempts
+serverOnly: true
+fields:
+  userId: int
+  success: bool
+  attemptedAt: DateTime
+indexes:
+  invite_attempts_user_time_idx:
+    fields: userId, attemptedAt

@@ -1,0 +1,10 @@
+### Kind of shared room or space.
+enum: RoomType
+serialized: byName
+default: other
+values:
+  - office
+  - living
+  - guest
+  - meeting
+  - other

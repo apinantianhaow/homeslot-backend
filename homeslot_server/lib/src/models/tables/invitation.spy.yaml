@@ -1,0 +1,16 @@
+### A 6-digit invite code (also rendered as a QR code) valid for 48 hours.
+class: Invitation
+table: invitations
+fields:
+  code: String
+  householdId: int, relation(parent=households, onDelete=Cascade)
+  createdById: int, relation(parent=users, onDelete=Cascade)
+  expiresAt: DateTime
+  revokedAt: DateTime?
+  createdAt: DateTime, default=now
+indexes:
+  invitations_code_idx:
+    fields: code
+    unique: true
+  invitations_household_idx:
+    fields: householdId
