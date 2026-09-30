@@ -8,6 +8,7 @@ import 'package:http/io_client.dart';
 import 'package:serverpod/serverpod.dart';
 
 import '../generated/protocol.dart';
+import '../util/clock.dart';
 
 /// Sends push notifications through Firebase Cloud Messaging (HTTP v1 API).
 ///
@@ -31,7 +32,11 @@ class PushSender {
   /// background deliveries piling up.
   static const _sendTimeout = Duration(seconds: 10);
 
+  /// How long to wait before loading the credentials again after a failure.
+  static const _retryAfter = Duration(minutes: 1);
+
   Future<void>? _loading;
+  DateTime? _failedAt;
   gauth.AutoRefreshingAuthClient? _client;
   String? _projectId;
 
@@ -67,10 +72,12 @@ class PushSender {
           HttpClient()..connectionTimeout = const Duration(seconds: 5),
         ),
       );
+      _failedAt = null;
     } catch (e, stackTrace) {
-      // Try again on the next push instead of staying disabled until the
-      // server restarts (e.g. no network while booting).
+      // Try again later (see [send]) instead of staying disabled until the
+      // server restarts, e.g. when there was no internet while booting.
       _loading = null;
+      _failedAt = clock.now();
       session.log(
         'Failed to initialise FCM: $e',
         level: LogLevel.error,
@@ -92,6 +99,16 @@ class PushSender {
     required String body,
     Map<String, String> data = const {},
   }) async {
+    if (_failedAt case final failedAt?) {
+      // Loading the credentials failed. Retry in the background at most
+      // once a minute; requests never wait for Google while it is
+      // unreachable, and the notification is still stored in the app.
+      if (clock.now().difference(failedAt) >= _retryAfter) {
+        _failedAt = clock.now();
+        unawaited(session.serverpod.withSession(init));
+      }
+      return;
+    }
     await init(session);
     final client = _client;
     if (client == null) return;
