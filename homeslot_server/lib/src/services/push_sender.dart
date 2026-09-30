@@ -20,6 +20,12 @@ import '../util/clock.dart';
 class PushSender {
   PushSender._();
 
+  /// Delivers through [client] instead of FCM credentials (for tests).
+  PushSender.withClient(http.Client client)
+    : _client = client,
+      _projectId = 'test',
+      _loading = Future.value();
+
   static PushSender instance = PushSender._();
 
   static const _scope = 'https://www.googleapis.com/auth/firebase.messaging';
@@ -37,7 +43,7 @@ class PushSender {
 
   Future<void>? _loading;
   DateTime? _failedAt;
-  gauth.AutoRefreshingAuthClient? _client;
+  http.Client? _client;
   String? _projectId;
 
   bool get enabled => _client != null;
