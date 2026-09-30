@@ -56,6 +56,7 @@ abstract final class BookingService {
             t.householdId.equals(actor.householdId) &
             t.status.inSet(visible) &
             (t.startAt < to) &
+            (t.startAt > from.subtract(BookingRules.maxBookingLength)) &
             (t.endAt > from);
         if (roomId != null) e = e & t.roomId.equals(roomId);
         return e;
@@ -104,26 +105,36 @@ abstract final class BookingService {
     return views(session, actor, rows);
   }
 
-  /// Adds room and booker display data to bookings.
+  /// Adds room and booker display data to bookings. Pass [roomsById] when
+  /// the rooms are already loaded.
   static Future<List<BookingView>> views(
     Session session,
     Actor actor,
     List<Booking> bookings, {
+    Map<int, Room>? roomsById,
     Transaction? transaction,
   }) async {
     if (bookings.isEmpty) return [];
-    final roomIds = bookings.map((b) => b.roomId).toSet();
-    final rooms = await Room.db.find(
-      session,
-      where: (t) => t.id.inSet(roomIds),
-      transaction: transaction,
-    );
-    final roomById = {for (final r in rooms) r.id!: r};
-    final users = await Users.byIds(
+    Future<Map<int, Room>> loadRooms() async =>
+        roomsById ??
+        {
+          for (final r in await Room.db.find(
+            session,
+            where: (t) => t.id.inSet(bookings.map((b) => b.roomId).toSet()),
+            transaction: transaction,
+          ))
+            r.id!: r,
+        };
+    Future<Map<int, AppUser>> loadUsers() => Users.byIds(
       session,
       bookings.map((b) => b.userId),
       transaction: transaction,
     );
+    // Independent lookups run together, except inside a transaction, whose
+    // queries share one connection.
+    final (roomById, users) = transaction == null
+        ? await (loadRooms(), loadUsers()).wait
+        : (await loadRooms(), await loadUsers());
     return [
       for (final b in bookings)
         BookingView(
@@ -959,15 +970,14 @@ abstract final class BookingService {
     Actor actor,
     Room room,
   ) async {
-    final hours = await RoomHours.db.find(
-      session,
-      where: (t) => t.roomId.equals(room.id),
-    );
     final now = clock.now();
-    final closures = await RoomClosure.db.find(
-      session,
-      where: (t) => t.roomId.equals(room.id) & (t.endAt > now),
-    );
+    final (hours, closures) = await (
+      RoomHours.db.find(session, where: (t) => t.roomId.equals(room.id)),
+      RoomClosure.db.find(
+        session,
+        where: (t) => t.roomId.equals(room.id) & (t.endAt > now),
+      ),
+    ).wait;
     return RuleContext(
       room: room,
       hours: hours,
@@ -991,6 +1001,7 @@ abstract final class BookingService {
             t.roomId.equals(roomId) &
             t.status.inSet(active) &
             (t.startAt < to) &
+            (t.startAt > from.subtract(BookingRules.maxBookingLength)) &
             (t.endAt > from);
         if (excludeIds.isNotEmpty) e = e & t.id.notInSet(excludeIds);
         return e;
@@ -1024,6 +1035,10 @@ abstract final class BookingService {
             t.userId.equals(actor.userId) &
             t.status.inSet(visible) &
             (t.startAt < TimeZones.utc(weekTo)) &
+            (t.startAt >
+                TimeZones.utc(
+                  weekFrom,
+                ).subtract(BookingRules.maxBookingLength)) &
             (t.endAt > TimeZones.utc(weekFrom));
         if (excludeIds.isNotEmpty) e = e & t.id.notInSet(excludeIds);
         return e;

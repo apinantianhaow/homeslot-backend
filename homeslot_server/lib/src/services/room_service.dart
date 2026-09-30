@@ -43,16 +43,18 @@ abstract final class RoomService {
   ) async {
     if (rooms.isEmpty) return [];
     final ids = rooms.map((r) => r.id!).toSet();
-    final hours = await RoomHours.db.find(
-      session,
-      where: (t) => t.roomId.inSet(ids),
-      orderBy: (t) => t.weekday,
-    );
-    final closures = await RoomClosure.db.find(
-      session,
-      where: (t) => t.roomId.inSet(ids) & (t.endAt > clock.now()),
-      orderBy: (t) => t.startAt,
-    );
+    final (hours, closures) = await (
+      RoomHours.db.find(
+        session,
+        where: (t) => t.roomId.inSet(ids),
+        orderBy: (t) => t.weekday,
+      ),
+      RoomClosure.db.find(
+        session,
+        where: (t) => t.roomId.inSet(ids) & (t.endAt > clock.now()),
+        orderBy: (t) => t.startAt,
+      ),
+    ).wait;
     return [
       for (final r in rooms)
         RoomDetail(
@@ -276,20 +278,28 @@ abstract final class RoomService {
     Session session,
     Actor actor,
   ) async {
-    final details = await list(session, actor);
-    if (details.isEmpty) return [];
     final now = clock.now();
-    final ids = details.map((d) => d.room.id!).toSet();
-    final bookings = await Booking.db.find(
+    // The rooms and their bookings do not depend on each other.
+    final (details, bookings) = await (
+      list(session, actor),
+      Booking.db.find(
+        session,
+        where: (t) =>
+            t.householdId.equals(actor.householdId) &
+            t.status.inSet(BookingService.active) &
+            (t.endAt > now) &
+            (t.startAt > now.subtract(BookingRules.maxBookingLength)) &
+            (t.startAt < now.add(const Duration(days: 7))),
+        orderBy: (t) => t.startAt,
+      ),
+    ).wait;
+    if (details.isEmpty) return [];
+    final views = await BookingService.views(
       session,
-      where: (t) =>
-          t.roomId.inSet(ids) &
-          t.status.inSet(BookingService.active) &
-          (t.endAt > now) &
-          (t.startAt < now.add(const Duration(days: 7))),
-      orderBy: (t) => t.startAt,
+      actor,
+      bookings,
+      roomsById: {for (final d in details) d.room.id!: d.room},
     );
-    final views = await BookingService.views(session, actor, bookings);
     return [
       for (final d in details)
         () {

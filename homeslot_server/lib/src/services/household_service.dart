@@ -321,6 +321,13 @@ abstract final class HouseholdService {
   /// Leaves the household and cancels the member's upcoming bookings. The
   /// household is deleted when its last member leaves.
   static Future<void> leave(Session session, Actor actor) async {
+    if (await _leave(session, actor)) {
+      await _broadcastMembershipChange(session, actor.householdId);
+    }
+  }
+
+  /// [leave] without telling the other members. Returns whether any remain.
+  static Future<bool> _leave(Session session, Actor actor) async {
     final others = (await Membership.members(
       session,
       actor.householdId,
@@ -355,9 +362,7 @@ abstract final class HouseholdService {
         );
       }
     });
-    if (others.isNotEmpty) {
-      await _broadcastMembershipChange(session, actor.householdId);
-    }
+    return others.isNotEmpty;
   }
 
   /// Deletes the account (PDPA): personal data is erased and past bookings
@@ -365,18 +370,40 @@ abstract final class HouseholdService {
   static Future<void> deleteAccount(Session session) async {
     final user = await Users.current(session);
     final member = await Membership.memberOf(session, user.id!);
+    int? householdToNotify;
     if (member != null) {
       final household = await Household.db.findById(
         session,
         member.householdId,
       );
-      if (household != null) {
-        await leave(
-          session,
-          Actor(user: user, member: member, household: household),
-        );
+      if (household != null &&
+          await _leave(
+            session,
+            Actor(user: user, member: member, household: household),
+          )) {
+        householdToNotify = household.id;
       }
     }
+    final authUserId = user.authUserId;
+    try {
+      await _eraseAccount(session, user);
+    } finally {
+      // Only now, so the other members' refresh already shows "former
+      // member" instead of the erased name.
+      if (householdToNotify != null) {
+        await _broadcastMembershipChange(session, householdToNotify);
+      }
+    }
+    if (authUserId != null) {
+      await session.messages.authenticationRevoked(
+        authUserId.uuid,
+        RevokedAuthenticationUser(),
+      );
+    }
+  }
+
+  /// Erases the personal data of [user] and deletes their sign-in.
+  static Future<void> _eraseAccount(Session session, AppUser user) async {
     final authUserId = user.authUserId;
     await session.db.transaction((transaction) async {
       await DeviceToken.db.deleteWhere(
@@ -414,12 +441,6 @@ abstract final class HouseholdService {
         );
       }
     });
-    if (authUserId != null) {
-      await session.messages.authenticationRevoked(
-        authUserId.uuid,
-        RevokedAuthenticationUser(),
-      );
-    }
   }
 
   static Future<HouseholdMember> _memberInHousehold(

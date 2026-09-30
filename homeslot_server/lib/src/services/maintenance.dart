@@ -30,29 +30,28 @@ abstract final class Maintenance {
   }
 
   static Future<int> _expirePending(Session session, DateTime now) async {
-    final rows = await Booking.db.find(
+    // One statement, so a request approved or cancelled at the same moment
+    // is never overwritten with an older copy of the row.
+    final saved = await Booking.db.updateWhere(
       session,
+      columnValues: (t) => [
+        t.status(BookingStatus.expired),
+        t.updatedAt(now),
+      ],
       where: (t) => t.status.equals(BookingStatus.pending) & (t.startAt <= now),
     );
-    if (rows.isEmpty) return 0;
-    final saved = await Booking.db.update(session, [
-      for (final b in rows)
-        b.copyWith(status: BookingStatus.expired, updatedAt: now),
-    ]);
-    final rooms = {
-      for (final r in await Room.db.find(
+    if (saved.isEmpty) return 0;
+    // Refresh the apps first: the slots are already free, whatever happens
+    // while notifying.
+    for (final householdId in saved.map((b) => b.householdId).toSet()) {
+      await Realtime.household(
         session,
-        where: (t) => t.id.inSet(saved.map((b) => b.roomId).toSet()),
-      ))
-        r.id!: r,
-    };
-    final households = {
-      for (final h in await Household.db.find(
-        session,
-        where: (t) => t.id.inSet(saved.map((b) => b.householdId).toSet()),
-      ))
-        h.id!: h,
-    };
+        householdId,
+        HouseholdEventType.bookingsChanged,
+      );
+    }
+    final rooms = await _roomsById(session, saved);
+    final households = await _householdsById(session, saved);
     for (final b in saved) {
       final room = rooms[b.roomId];
       final household = households[b.householdId];
@@ -64,13 +63,6 @@ abstract final class Maintenance {
         booking: b,
         room: room,
         household: household,
-      );
-    }
-    for (final householdId in households.keys) {
-      await Realtime.household(
-        session,
-        householdId,
-        HouseholdEventType.bookingsChanged,
       );
     }
     return saved.length;
@@ -112,31 +104,71 @@ abstract final class Maintenance {
       ))
         u.id!: u,
     };
+    final due = [
+      for (final b in candidates)
+        if (users[b.userId] case final user?
+            when user.reminderEnabled &&
+                user.deletedAt == null &&
+                b.startAt.difference(now).inMinutes <= user.reminderMinutes)
+          b,
+    ];
+    if (due.isEmpty) return 0;
+    final rooms = await _roomsById(session, due);
+    final households = await _householdsById(session, due);
     var sent = 0;
-    for (final b in candidates) {
-      final user = users[b.userId];
-      if (user == null || !user.reminderEnabled || user.deletedAt != null) {
-        continue;
-      }
-      final minutesLeft = b.startAt.difference(now).inMinutes;
-      if (minutesLeft > user.reminderMinutes) continue;
-      final room = await Room.db.findById(session, b.roomId);
-      final household = await Household.db.findById(session, b.householdId);
+    for (final b in due) {
+      final room = rooms[b.roomId];
+      final household = households[b.householdId];
       if (room == null || household == null) continue;
-      await Booking.db.updateRow(session, b.copyWith(reminderSentAt: now));
+      // Set only this column, and only while the booking is still the one
+      // that was read, so a cancel or edit made meanwhile is kept.
+      final marked = await Booking.db.updateWhere(
+        session,
+        columnValues: (t) => [t.reminderSentAt(now)],
+        where: (t) =>
+            t.id.equals(b.id) &
+            t.status.equals(BookingStatus.confirmed) &
+            t.reminderSentAt.equals(null) &
+            t.startAt.equals(b.startAt),
+      );
+      if (marked.isEmpty) continue;
+      final minutesLeft = b.startAt.difference(now).inMinutes;
       await Notifier.aboutBooking(
         session,
         userId: b.userId,
         type: NotificationType.bookingReminder,
-        booking: b,
+        booking: marked.single,
         room: room,
         household: household,
+        user: users[b.userId],
         extra: {'minutes': '${minutesLeft < 1 ? 1 : minutesLeft}'},
       );
       sent++;
     }
     return sent;
   }
+
+  static Future<Map<int, Room>> _roomsById(
+    Session session,
+    List<Booking> bookings,
+  ) async => {
+    for (final r in await Room.db.find(
+      session,
+      where: (t) => t.id.inSet(bookings.map((b) => b.roomId).toSet()),
+    ))
+      r.id!: r,
+  };
+
+  static Future<Map<int, Household>> _householdsById(
+    Session session,
+    List<Booking> bookings,
+  ) async => {
+    for (final h in await Household.db.find(
+      session,
+      where: (t) => t.id.inSet(bookings.map((b) => b.householdId).toSet()),
+    ))
+      h.id!: h,
+  };
 
   static Future<void> _purge(Session session, DateTime now) async {
     await AppNotification.db.deleteWhere(

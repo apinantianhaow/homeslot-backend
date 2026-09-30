@@ -27,13 +27,15 @@ abstract final class StatsService {
         ? TimeZones.addDays(from, 7)
         : tz.TZDateTime(location, from.year, from.month + 1);
 
-    final rooms = await Room.db.find(
-      session,
-      where: (t) => t.householdId.equals(actor.householdId),
-      orderByList: (t) => [t.sortOrder, t.name],
-    );
-    final members = await Membership.members(session, actor.householdId);
-    final bookings = await _bookings(session, actor, from, to);
+    final (rooms, members, bookings) = await (
+      Room.db.find(
+        session,
+        where: (t) => t.householdId.equals(actor.householdId),
+        orderByList: (t) => [t.sortOrder, t.name],
+      ),
+      Membership.members(session, actor.householdId),
+      _bookings(session, actor, from, to),
+    ).wait;
     final users = await Users.byIds(session, {
       ...members.map((m) => m.userId),
       ...bookings.map((b) => b.userId),
@@ -120,10 +122,7 @@ abstract final class StatsService {
     final now = TimeZones.local(clock.now(), location);
     final to = TimeZones.addDays(TimeZones.startOfDay(now), 1);
     final from = TimeZones.addDays(to, -days.clamp(1, 366));
-    var bookings = await _bookings(session, actor, from, to);
-    if (roomId != null) {
-      bookings = bookings.where((b) => b.roomId == roomId).toList();
-    }
+    final bookings = await _bookings(session, actor, from, to, roomId: roomId);
 
     final hourly = List<int>.filled(24, 0);
     final heatmap = List<int>.filled(7 * 24, 0);
@@ -165,13 +164,20 @@ abstract final class StatsService {
     Session session,
     Actor actor,
     DateTime from,
-    DateTime to,
-  ) => Booking.db.find(
+    DateTime to, {
+    int? roomId,
+  }) => Booking.db.find(
     session,
-    where: (t) =>
-        t.householdId.equals(actor.householdId) &
-        t.status.inSet(_counted) &
-        (t.startAt < TimeZones.utc(to)) &
-        (t.endAt > TimeZones.utc(from)),
+    where: (t) {
+      var e =
+          t.householdId.equals(actor.householdId) &
+          t.status.inSet(_counted) &
+          (t.startAt < TimeZones.utc(to)) &
+          (t.startAt >
+              TimeZones.utc(from).subtract(BookingRules.maxBookingLength)) &
+          (t.endAt > TimeZones.utc(from));
+      if (roomId != null) e = e & t.roomId.equals(roomId);
+      return e;
+    },
   );
 }

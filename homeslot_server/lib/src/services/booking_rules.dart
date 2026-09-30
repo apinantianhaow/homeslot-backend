@@ -45,6 +45,15 @@ class RuleContext {
 /// ([overlaps], [checkQuota]); the database exclusion constraint is the
 /// final guard against overlaps.
 abstract final class BookingRules {
+  /// Longest booking a room may allow, and so the longest stored booking.
+  static const maxBookingMinutes = 14 * 1440;
+
+  /// [maxBookingMinutes] as a duration. A booking that overlaps `[from, to)`
+  /// therefore starts after `from - maxBookingLength`; range queries add that
+  /// lower bound so the `startAt` indexes scan only the window instead of
+  /// the whole booking history.
+  static const maxBookingLength = Duration(minutes: maxBookingMinutes);
+
   /// Checks the time rules for a booking from [start] to [end].
   ///
   /// When [enforceAdvanceLimit] is false the "book at most N days ahead" rule
@@ -214,7 +223,7 @@ abstract final class BookingRules {
     }
     if (room.maxMinutes < room.minMinutes ||
         room.maxMinutes % room.slotMinutes != 0 ||
-        room.maxMinutes > 14 * 1440) {
+        room.maxMinutes > maxBookingMinutes) {
       return 'Maximum length must be between the minimum and 14 days, '
           'in slot steps.';
     }

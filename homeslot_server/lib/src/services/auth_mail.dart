@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:mailer/mailer.dart' as mailer;
 import 'package:mailer/smtp_server.dart';
 import 'package:serverpod/serverpod.dart';
@@ -75,17 +77,34 @@ abstract final class AuthMail {
       ..recipients.add(to)
       ..subject = subject
       ..text = text;
+    // Sent in the background: the sign-up or reset request, and the auth
+    // transaction it runs in, do not wait for the mail server.
+    unawaited(_deliver(session.serverpod, message, server, logLabel));
+  }
+
+  static Future<void> _deliver(
+    Serverpod pod,
+    mailer.Message message,
+    SmtpServer server,
+    String logLabel,
+  ) async {
     try {
-      await mailer.send(message, server);
+      await mailer.send(message, server, timeout: const Duration(seconds: 30));
     } catch (e, stackTrace) {
       // Never reveal to the caller whether sending failed; that would leak
-      // whether the account exists.
-      session.log(
-        'Failed to send $logLabel email: $e',
-        level: LogLevel.error,
-        exception: e,
-        stackTrace: stackTrace,
-      );
+      // whether the account exists. The request's session is closed by now.
+      try {
+        await pod.withSession(
+          (session) async => session.log(
+            'Failed to send $logLabel email: $e',
+            level: LogLevel.error,
+            exception: e,
+            stackTrace: stackTrace,
+          ),
+        );
+      } catch (_) {
+        // Nothing else to report to.
+      }
     }
   }
 }

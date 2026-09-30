@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:serverpod_auth_idp_server/core.dart';
 import 'package:serverpod_auth_idp_server/providers/email.dart';
 import 'package:serverpod_auth_idp_server/providers/google.dart';
@@ -6,6 +8,7 @@ import 'package:serverpod_cloud_storage/serverpod_cloud_storage.dart';
 import 'src/db/constraints.dart';
 import 'src/generated/serverpod.dart';
 import 'src/services/auth_mail.dart';
+import 'src/services/push_sender.dart';
 import 'src/util/time_zones.dart';
 
 /// Identifier of the recurring maintenance future call.
@@ -56,6 +59,9 @@ void run(List<String> args) async {
   } finally {
     await session.close();
   }
+
+  // Load the FCM credentials now, so the first push does not wait for them.
+  unawaited(pod.withSession(PushSender.instance.init));
 
   // Expire pending requests, complete ended bookings and send reminders.
   await pod.futureCalls.cancel(maintenanceCallId);

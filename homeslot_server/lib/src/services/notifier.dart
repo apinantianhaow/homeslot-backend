@@ -19,10 +19,13 @@ abstract final class Notifier {
     int? householdId,
     int? bookingId,
     Map<String, String> params = const {},
+
+    /// The recipient's row when the caller already loaded it.
+    AppUser? user,
   }) async {
-    final user = await AppUser.db.findById(session, userId);
-    if (user == null || user.deletedAt != null) return;
-    final text = Messages.of(user.locale).notification(type, params);
+    final recipient = user ?? await AppUser.db.findById(session, userId);
+    if (recipient == null || recipient.deletedAt != null) return;
+    final text = Messages.of(recipient.locale).notification(type, params);
     await AppNotification.db.insertRow(
       session,
       AppNotification(
@@ -63,16 +66,20 @@ abstract final class Notifier {
     required Room room,
     required Household household,
     Map<String, String> extra = const {},
+
+    /// The recipient's row when the caller already loaded it.
+    AppUser? user,
   }) async {
-    final user = await AppUser.db.findById(session, userId);
-    if (user == null) return;
-    final messages = Messages.of(user.locale);
+    final recipient = user ?? await AppUser.db.findById(session, userId);
+    if (recipient == null) return;
+    final messages = Messages.of(recipient.locale);
     await send(
       session,
       userId: userId,
       type: type,
       householdId: household.id,
       bookingId: booking.id,
+      user: recipient,
       params: {
         'room': room.name,
         'time': messages.range(
